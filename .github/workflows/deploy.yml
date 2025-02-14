@@ -15,29 +15,41 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Debug Environment
+    - name: Test EC2 connection
       run: |
-        echo "Debugging environment variables (safely)"
-        echo "EC2_HOST exists: ${{ secrets.EC2_HOST != '' }}"
-        echo "EC2_USER exists: ${{ secrets.EC2_USER != '' }}"
-        echo "EC2_SSH_KEY exists: ${{ secrets.EC2_SSH_KEY != '' }}"
+        echo "Testing connection to EC2..."
+        ping -c 4 ec2-3-70-223-49.eu-central-1.compute.amazonaws.com
 
     - name: Install SSH key
       uses: webfactory/ssh-agent@v0.5.4
       with:
         ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-    - name: Setup SSH directory
+    - name: Configure SSH
       run: |
         mkdir -p ~/.ssh
         chmod 700 ~/.ssh
-        touch ~/.ssh/known_hosts
-        chmod 644 ~/.ssh/known_hosts
+        echo "Host ec2-3-70-223-49.eu-central-1.compute.amazonaws.com" >> ~/.ssh/config
+        echo "    StrictHostKeyChecking no" >> ~/.ssh/config
+        echo "    UserKnownHostsFile /dev/null" >> ~/.ssh/config
+        chmod 600 ~/.ssh/config
 
-    - name: Add EC2 to known hosts
+    - name: Test SSH Connection
       run: |
-        if [ -z "${{ secrets.EC2_HOST }}" ]; then
-          echo "Error: EC2_HOST secret is not set"
-          exit 1
-        fi
-        ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts || echo "Failed to scan host key"
+        echo "Testing SSH connection..."
+        ssh -v ${{ secrets.EC2_USER }}@ec2-3-70-223-49.eu-central-1.compute.amazonaws.com 'echo "SSH connection successful"'
+
+    - name: Deploy to EC2
+      env:
+        EC2_USER: ${{ secrets.EC2_USER }}
+      run: |
+        echo "Starting deployment..."
+        scp -v index.html $EC2_USER@ec2-3-70-223-49.eu-central-1.compute.amazonaws.com:/tmp/index.html
+        ssh $EC2_USER@ec2-3-70-223-49.eu-central-1.compute.amazonaws.com '
+          sudo mv /tmp/index.html /usr/share/nginx/html/index.html
+          sudo chown nginx:nginx /usr/share/nginx/html/index.html
+          sudo chmod 644 /usr/share/nginx/html/index.html
+          sudo systemctl reload nginx
+        '
+
+
