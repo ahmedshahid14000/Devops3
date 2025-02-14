@@ -30,12 +30,11 @@ jobs:
     - name: Deploy to EC2
       run: |
         echo "Starting deployment..."
-        scp -o StrictHostKeyChecking=no index.html ec2-user@ec2-3-70-223-49.eu-central-1.compute.amazonaws.com:/tmp/index.html
-        ssh -o StrictHostKeyChecking=no ec2-user@ec2-3-70-223-49.eu-central-1.compute.amazonaws.com '
+        scp -o StrictHostKeyChecking=no index.html ubuntu@ec2-3-70-223-49.eu-central-1.compute.amazonaws.com:/tmp/index.html
+        ssh -o StrictHostKeyChecking=no ubuntu@ec2-3-70-223-49.eu-central-1.compute.amazonaws.com '
           sudo mv /tmp/index.html /usr/share/nginx/html/index.html
-          sudo chown nginx:nginx /usr/share/nginx/html/index.html
+          sudo chown www-data:www-data /usr/share/nginx/html/index.html
           sudo chmod 644 /usr/share/nginx/html/index.html
           sudo systemctl reload nginx
           echo "Deployment completed successfully"
         '
-
