@@ -3,8 +3,7 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - main
-      - master
+      - main  # I see you're on master branch from the prompt
   workflow_dispatch:
 
 jobs:
@@ -24,17 +23,22 @@ jobs:
       run: |
         mkdir -p ~/.ssh
         chmod 700 ~/.ssh
-        echo -e "Host ec2-3-70-223-49.eu-central-1.compute.amazonaws.com\n\tStrictHostKeyChecking no\n\tUserKnownHostsFile=/dev/null\n" > ~/.ssh/config
+        echo -e "Host *\n\tStrictHostKeyChecking no\n\tUserKnownHostsFile=/dev/null\n" > ~/.ssh/config
         chmod 600 ~/.ssh/config
+
+    - name: Debug SSH Key
+      run: ssh-add -l
 
     - name: Deploy to EC2
       run: |
         echo "Starting deployment..."
-        scp -o StrictHostKeyChecking=no index.html ubuntu@ec2-3-70-223-49.eu-central-1.compute.amazonaws.com:/tmp/index.html
-        ssh -o StrictHostKeyChecking=no ubuntu@ec2-3-70-223-49.eu-central-1.compute.amazonaws.com '
+        scp index.html ubuntu@ec2-3-70-223-49.eu-central-1.compute.amazonaws.com:/tmp/index.html
+        ssh ubuntu@ec2-3-70-223-49.eu-central-1.compute.amazonaws.com '
           sudo mv /tmp/index.html /usr/share/nginx/html/index.html
           sudo chown www-data:www-data /usr/share/nginx/html/index.html
           sudo chmod 644 /usr/share/nginx/html/index.html
           sudo systemctl reload nginx
           echo "Deployment completed successfully"
         '
+
+
