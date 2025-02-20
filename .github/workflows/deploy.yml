@@ -3,7 +3,7 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - main  # or your default branch name
+      - main  # Trigger the deployment on push to the main branch
 
 jobs:
   deploy:
@@ -25,15 +25,15 @@ jobs:
       
     - name: Deploy to EC2
       env:
-        PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-        HOST: ${{ secrets.EC2_HOST }}
-        USER: ${{ secrets.EC2_USER }}
+        PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # Fetch the private key from GitHub Secrets
+        HOST: ${{ secrets.EC2_HOST }}                    # Fetch the EC2 host IP or hostname from GitHub Secrets
+        USER: ${{ secrets.EC2_USER }}                    # Fetch the EC2 username from GitHub Secrets
       run: |
-        # Copy index.html to EC2
+        # Copy index.html to EC2 instance
         echo "Deploying index.html to EC2..."
-        scp -v -o StrictHostKeyChecking=no -i private_key.pem index.html ${USER}@${HOST}:~/ 
+        scp -v -o StrictHostKeyChecking=no -i private_key.pem index.html ${USER}@${HOST}:~/
         
-        # Move file to nginx directory, set permissions, and restart nginx
+        # Move the file to the Nginx directory, set proper permissions, and restart Nginx
         ssh -v -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} '
           echo "Moving file to /var/www/html/"
           sudo mv ~/index.html /var/www/html/
@@ -45,4 +45,4 @@ jobs:
 
     - name: Clean up private key
       run: |
-        rm -f private_key.pem
+        rm -f private_key.pem  # Clean up private key after deployment
