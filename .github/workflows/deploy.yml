@@ -18,6 +18,9 @@ jobs:
         echo "$PRIVATE_KEY" > private_key.pem
         chmod 600 private_key.pem
 
+    - name: Debug - Print HOST value
+      run: echo "HOST value is: ${{ secrets.EC2_HOST }}"
+
     - name: Debug - Test SSH connection to EC2
       run: |
         echo "Testing SSH connection..."
