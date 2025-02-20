@@ -10,30 +10,34 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+    # Step 1: Checkout the repository
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Set up private key for SSH
+    # Step 2: Set up the SSH private key for authentication
+    - name: Set up SSH private key for deployment
       run: |
         echo "$PRIVATE_KEY" > private_key.pem
         chmod 600 private_key.pem
 
-    - name: Debug - Test SSH connection to EC2
+    # Step 3: Debug - Test SSH connection to EC2
+    - name: Test SSH connection to EC2
       run: |
         echo "Testing SSH connection..."
         ssh -v -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} 'echo "SSH connection successful!"'
       
+    # Step 4: Deploy the application to EC2
     - name: Deploy to EC2
       env:
         PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # Fetch the private key from GitHub Secrets
         HOST: ${{ secrets.EC2_HOST }}                    # Fetch the EC2 host IP or hostname from GitHub Secrets
         USER: ${{ secrets.EC2_USER }}                    # Fetch the EC2 username from GitHub Secrets
       run: |
-        # Copy index.html to EC2 instance
+        # Step 4.1: Copy index.html to the EC2 instance
         echo "Deploying index.html to EC2..."
-        scp -v -o StrictHostKeyChecking=no -i private_key.pem index.html ${USER}@${HOST}:~/
+        scp -v -o StrictHostKeyChecking=no -i private_key.pem index.html ${USER}@${HOST}:~/ 
         
-        # Move the file to the Nginx directory, set proper permissions, and restart Nginx
+        # Step 4.2: Move the file to the Nginx directory and set proper permissions
         ssh -v -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} '
           echo "Moving file to /var/www/html/"
           sudo mv ~/index.html /var/www/html/
@@ -43,6 +47,7 @@ jobs:
           echo "Deployment complete!"
         '
 
+    # Step 5: Clean up private key
     - name: Clean up private key
       run: |
-        rm -f private_key.pem  # Clean up private key after deployment
+        rm -f private_key.pem
