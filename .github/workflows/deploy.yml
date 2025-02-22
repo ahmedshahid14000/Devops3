@@ -2,14 +2,14 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - main
+      - main  # or your default branch name
 jobs:
   deploy:
     runs-on: ubuntu-latest
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3  # Update to v3
+      uses: actions/checkout@v2
       
     - name: Deploy to EC2
       env:
@@ -17,28 +17,22 @@ jobs:
         HOST: ${{ secrets.EC2_HOST }}
         USER: ${{ secrets.EC2_USER }}
       run: |
-        # Store private key with better security
-        install -m 600 /dev/null private_key.pem
+        # Store private key
         echo "$PRIVATE_KEY" > private_key.pem
+        chmod 600 private_key.pem
         
-        # Add error handling
-        if ! scp -o StrictHostKeyChecking=no -i private_key.pem index.html ${USER}@${HOST}:~/; then
-          echo "Failed to copy file to EC2"
-          exit 1
-        fi
+        # First copy to home directory, then move with sudo
+        scp -o StrictHostKeyChecking=no -i private_key.pem index.html ${USER}@${HOST}:~/
         
-        # Add error checking for deployment steps
-        if ! ssh -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} '
-          sudo mv ~/index.html /usr/share/nginx/html/ &&
-          sudo chown nginx:nginx /usr/share/nginx/html/index.html &&
-          sudo chmod 644 /usr/share/nginx/html/index.html &&
+        # Move file to nginx directory with sudo and set permissions
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} '
+          sudo mv ~/index.html /usr/share/nginx/html/
+          sudo chown nginx:nginx /usr/share/nginx/html/index.html
+          sudo chmod 644 /usr/share/nginx/html/index.html
           sudo systemctl restart nginx
-        '; then
-          echo "Failed to deploy on EC2"
-          exit 1
-        fi
+        '
         
-        # Secure cleanup
-        shred -u private_key.pem
+        # Clean up
+        rm -f private_key.pem
 
 
