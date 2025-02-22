@@ -12,16 +12,6 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
-
-    - name: Set up private key for SSH
-      run: |
-        echo "$PRIVATE_KEY" > private_key.pem
-        chmod 600 private_key.pem
-
-    - name: Debug - Test SSH connection to EC2
-      run: |
-        echo "Testing SSH connection..."
-        ssh -v -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} 'echo "SSH connection successful!"'
       
     - name: Deploy to EC2
       env:
@@ -29,20 +19,21 @@ jobs:
         HOST: ${{ secrets.EC2_HOST }}
         USER: ${{ secrets.EC2_USER }}
       run: |
-        # Copy index.html to EC2
-        echo "Deploying index.html to EC2..."
-        scp -v -o StrictHostKeyChecking=no -i private_key.pem index.html ${USER}@${HOST}:~/ 
+        # Store private key
+        echo "$PRIVATE_KEY" > private_key.pem
+        chmod 600 private_key.pem
         
-        # Move file to nginx directory, set permissions, and restart nginx
-        ssh -v -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} '
-          echo "Moving file to /var/www/html/"
-          sudo mv ~/index.html /var/www/html/
-          sudo chown nginx:nginx /var/www/html/index.html
-          sudo chmod 644 /var/www/html/index.html
+        # First copy to home directory, then move with sudo
+        scp -o StrictHostKeyChecking=no -i private_key.pem index.html ${USER}@${HOST}:~/
+        
+        # Move file to nginx directory with sudo and set permissions
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} '
+          sudo mv ~/index.html /usr/share/nginx/html/
+          sudo chown nginx:nginx /usr/share/nginx/html/index.html
+          sudo chmod 644 /usr/share/nginx/html/index.html
           sudo systemctl restart nginx
-          echo "Deployment complete!"
         '
-
-    - name: Clean up private key
-      run: |
+        
+        # Clean up
         rm -f private_key.pem
+
